@@ -55,24 +55,28 @@ class AudioFacialDataset(Dataset):
         return src_batch, trg_batch
 
     def process_example(self, small_frames, large_frames):
-
         num_frames_small = len(small_frames)
         num_frames_large = len(large_frames)
-
         max_frames = max(num_frames_small, num_frames_large)
 
         examples = []
-        for start in range(0, max_frames - self.micro_batch_size + 1):
+        # Step by micro_batch_size instead of 1
+        for start in range(0, max_frames - self.micro_batch_size + 1, self.micro_batch_size):
             end = start + self.micro_batch_size
             
             small_segment = np.zeros((self.micro_batch_size, small_frames.shape[1]))
             large_segment = np.zeros((self.micro_batch_size, large_frames.shape[1]))
             
+            # Fill in available frames (if the video has fewer frames than expected, this handles it)
             small_segment[:min(self.micro_batch_size, num_frames_small - start)] = small_frames[start:end]
             large_segment[:min(self.micro_batch_size, num_frames_large - start)] = large_frames[start:end]
-
-            examples.append((torch.tensor(small_segment, dtype=torch.float32), torch.tensor(large_segment, dtype=torch.float32)))
-
+            
+            examples.append((
+                torch.tensor(small_segment, dtype=torch.float32),
+                torch.tensor(large_segment, dtype=torch.float32)
+            ))
+        
+        # Handle any leftover frames if max_frames is not a multiple of micro_batch_size
         if max_frames % self.micro_batch_size != 0:
             start = max_frames - self.micro_batch_size
             end = max_frames
@@ -82,16 +86,20 @@ class AudioFacialDataset(Dataset):
             
             segment_small = small_frames[start:end]
             segment_large = large_frames[start:end]
-
+            
+            # Reflect to fill the remaining micro-batch if necessary
             reflection_small = np.flip(segment_small, axis=0)
             reflection_large = np.flip(segment_large, axis=0)
-
+            
             small_segment[:len(segment_small)] = segment_small
             small_segment[len(segment_small):] = reflection_small[:self.micro_batch_size - len(segment_small)]
-
+            
             large_segment[:len(segment_large)] = segment_large
             large_segment[len(segment_large):] = reflection_large[:self.micro_batch_size - len(segment_large)]
-
-            examples.append((torch.tensor(small_segment, dtype=torch.float32), torch.tensor(large_segment, dtype=torch.float32)))
+            
+            examples.append((
+                torch.tensor(small_segment, dtype=torch.float32),
+                torch.tensor(large_segment, dtype=torch.float32)
+            ))
         
         return examples
