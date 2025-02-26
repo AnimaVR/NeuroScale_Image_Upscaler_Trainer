@@ -1,4 +1,4 @@
-###NeuroScale_Trainer
+*NeuroScale_Trainer*
 
 Image upscaler transformer seq2seq research, based on NeuroSync - but for images.
 
