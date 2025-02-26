@@ -18,7 +18,7 @@ training_config = {
     'use_multi_gpu' : False,   
     'num_gpus' : 1,               
     'warmup_epochs': 0, 
-    'input_dim': 768,    # this is width x 3 for RGB  - we stretch the 64x64 image up to create pixillated version of same size as taret
+    'input_dim': 768,    # this is width x 3 for RGB  - we stretch the 64x64 image up to create pixillated version of same size as target
     'frame_size': 256, # this is the height of the image
     'root_dir': r"dataset/data",     
     'model_path': r"out/model.pth",
