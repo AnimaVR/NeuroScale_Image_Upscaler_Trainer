@@ -4,7 +4,7 @@ training_config = {
     'hidden_dim': 1536,      # Hidden dimension for the model ### increases increase GPU memory requirements a lot.
     'n_layers': 4,           # Number of layers in the model
     'num_heads': 8,          # Number of attention heads
-    'dropout': 0.2,          # Dropout rate
+    'dropout': 0.1,          # Dropout rate | Consider, if being used as compression. Do we actually WANT to overfit?
     'batch_size': 8,      # Batch size ## REDUCE THIS IF < 24GB GPU
     'micro_batch_size': 256, # Micro batch size # If you increase this you need to reduce the batch size
     'learning_rate': 1e-4,   # Learning rate
