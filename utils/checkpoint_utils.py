@@ -51,9 +51,9 @@ def load_checkpoint(checkpoint_path, model, optimizer, scheduler, device):
     return epoch, batch_step, model, optimizer, scheduler
 
 def save_checkpoint_and_data(epoch, model, optimizer, scheduler, batch_step, config, lock, device):
-    if (epoch + 1) % 1 == 0:
+    if (epoch + 1) % 20 == 0:
         save_checkpoint(model, optimizer, scheduler, epoch, batch_step, config)
         torch.save(model.state_dict(), config['model_path'])
         # Validate only every 10 epochs
-    if (epoch + 1) % 10 == 0:
+    if (epoch + 1) % 20 == 0:
         validate_model(model, device)
