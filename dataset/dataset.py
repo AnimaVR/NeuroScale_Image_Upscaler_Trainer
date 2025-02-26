@@ -104,7 +104,7 @@ class AudioFacialDataset(Dataset):
         
         return examples
 """
-#if you want to go line by line with a reduced frame size, you can use this instead - this only moves one frame per grab of pairs within a frame
+#if you want to go line by line with a reduced frame size, you can use this instead - this only moves one row per grab of pairs within a frame
 
 # dataset.py
 
