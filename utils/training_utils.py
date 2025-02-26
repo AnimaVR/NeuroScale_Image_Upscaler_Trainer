@@ -116,14 +116,9 @@ def train_one_epoch(
 
     # Plot and save the loss curves.
     # The helper function 'save_loss_plot' will create the directory if needed.
-    save_loss_plot(epoch, train_steps, train_losses, val_steps, val_losses, save_dir="dataset/validation_plots/loss")
-
-    # Also save the gradient norm plot (existing functionality)
-    save_gradient_norm_plot(
-        epoch,
-        gradient_norms,
-        save_dir="dataset/validation_plots/gradient_norms"
-    )
+    if (epoch + 1) % 20 == 0:
+        save_loss_plot(epoch, train_steps, train_losses, val_steps, val_losses, save_dir="dataset/validation_plots/loss")
+        save_gradient_norm_plot(epoch, gradient_norms, save_dir="dataset/validation_plots/gradient_norms")
 
     return batch_step
 
@@ -296,8 +291,9 @@ def train_one_epoch_multi_gpu(
 
     end_time = time.time()
     print_epoch_summary(epoch, total_epochs, epoch_loss, steps_per_epoch, end_time - start_time)
-    save_gradient_norm_plot(epoch, gradient_norms, save_dir="dataset/validation_plots/gradient_norms")
-    save_loss_plot(epoch, train_steps, train_losses, val_steps, val_losses, save_dir="dataset/validation_plots/loss")
+    if (epoch + 1) % 20 == 0:
+        save_loss_plot(epoch, train_steps, train_losses, val_steps, val_losses, save_dir="dataset/validation_plots/loss")
+        save_gradient_norm_plot(epoch, gradient_norms, save_dir="dataset/validation_plots/gradient_norms")
 
     return batch_step
 
