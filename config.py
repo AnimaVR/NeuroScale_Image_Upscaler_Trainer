@@ -5,7 +5,7 @@ training_config = {
     'n_layers': 4,           # Number of layers in the model
     'num_heads': 8,          # Number of attention heads
     'dropout': 0.2,          # Dropout rate | Consider, if being used as compression. Do we actually WANT to overfit?
-    'batch_size': 8,      
+    'batch_size': 64,      
     'micro_batch_size': 256, # Micro batch size, this is the height of the image
     'learning_rate': 5e-5,   # Learning rate
     'weight_decay': 1e-5,    # Weight decay for the optimizer
