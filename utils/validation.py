@@ -45,7 +45,7 @@ def decode_image_tensor(image_tensor, model, device):
         encoder_outputs = model.encoder(src_tensor)
         output_sequence = model.decoder(encoder_outputs)
         decoded_outputs = output_sequence.squeeze(0).cpu().numpy()
-        decoded_outputs = decoded_outputs / 10.0
+        decoded_outputs = decoded_outputs / 20.0
         decoded_outputs = np.clip(decoded_outputs, 0, 1)
         decoded_image = decoded_outputs.reshape(256, 256, 3)
     return decoded_image
