@@ -1,33 +1,27 @@
 import os
+import shutil
 import numpy as np
 import cv2
 import torch
 from utils.video.mov_extraction import find_files, extract_frames
 
-def resize_cover(image, target_size, interpolation=cv2.INTER_CUBIC):
+def organize_videos(root_dir):
     """
-    Resizes an image to the target size using a "cover" strategy.
-    The image is scaled to fill the target size while preserving its aspect ratio,
-    then center-cropped to exactly match target_size.
-    
-    :param image: Input image (H x W x C).
-    :param target_size: Desired size as (width, height).
-    :param interpolation: Interpolation method.
-    :return: Resized and cropped image.
+    Checks for video files (e.g. .mov, .mp4) in root_dir that are not inside a folder.
+    For each video found, creates a folder (named after the video file's base name),
+    and moves the video file into that folder.
     """
-    target_w, target_h = target_size
-    h, w = image.shape[:2]
-    # Determine scale factor: the larger of the width or height ratios.
-    scale = max(target_w / w, target_h / h)
-    new_w = int(w * scale)
-    new_h = int(h * scale)
-    # Resize the image with the computed scale.
-    resized = cv2.resize(image, (new_w, new_h), interpolation=interpolation)
-    # Compute center crop coordinates.
-    x = (new_w - target_w) // 2
-    y = (new_h - target_h) // 2
-    cropped = resized[y:y+target_h, x:x+target_w]
-    return cropped
+    video_extensions = (".mov", ".mp4")
+    for entry in os.listdir(root_dir):
+        entry_path = os.path.join(root_dir, entry)
+        if os.path.isfile(entry_path) and entry.lower().endswith(video_extensions):
+            base_name = os.path.splitext(entry)[0]
+            new_folder = os.path.join(root_dir, base_name)
+            if not os.path.exists(new_folder):
+                os.makedirs(new_folder, exist_ok=True)
+            new_path = os.path.join(new_folder, entry)
+            shutil.move(entry_path, new_path)
+            print(f"Moved video '{entry}' to folder '{new_folder}'")
 
 def load_data(root_dir, processed_folders):
     """
@@ -35,6 +29,9 @@ def load_data(root_dir, processed_folders):
     Returns a list of pairs: (small_frames, large_frames) for training.
     Each is a tensor of shape (total_scanlines, 768).
     """
+    # First, organize any loose video files into their own folders.
+    organize_videos(root_dir)
+
     examples = []
     for folder in os.listdir(root_dir):
         folder_path = os.path.join(root_dir, folder)
@@ -52,7 +49,7 @@ def process_folder(folder_path):
     """
     mov_path, mp4_path, small_frames_dir, large_frames_dir = find_files(folder_path)
     video_path = mov_path or mp4_path  # Use whichever video is found
-    
+
     if video_path:
         # If a video file exists, extract frames if needed.
         existing_small = sorted(os.listdir(small_frames_dir))
@@ -81,9 +78,9 @@ def process_folder(folder_path):
             if img is None:
                 print(f"Skipping image {image_file} due to loading error.")
                 continue
-            # Use resize_cover to avoid distortion.
-            small_img = resize_cover(img, (64, 64), interpolation=cv2.INTER_CUBIC)
-            large_img = resize_cover(img, (256, 256), interpolation=cv2.INTER_CUBIC)
+            # Use a cover strategy to avoid distortion (if desired, you can use a helper like resize_cover)
+            small_img = cv2.resize(img, (64, 64), interpolation=cv2.INTER_CUBIC)
+            large_img = cv2.resize(img, (256, 256), interpolation=cv2.INTER_CUBIC)
             # Save processed images to the frames directories.
             small_frame_path = os.path.join(small_frames_dir, f"frame_{idx:04d}.png")
             large_frame_path = os.path.join(large_frames_dir, f"frame_{idx:04d}.png")
@@ -96,9 +93,8 @@ def process_folder(folder_path):
 def collect_features(small_frames_dir, large_frames_dir):
     """
     Loads extracted frames in color, normalizes pixel values, and converts them into tokens.
-    Each frame is resized to 256x256 using the cover method.
-    Each row (scanline) is flattened from (256,3) to a vector of length 768.
-    
+    Each frame is resized to 256x256.
+    Each row (scanline) is flattened from (256, 3) to a vector of length 768.
     Returns:
         tuple: (small_sequences_tensor, large_sequences_tensor) of shape (TotalScanlines, 768)
     """
@@ -122,17 +118,17 @@ def collect_features(small_frames_dir, large_frames_dir):
         small_img = cv2.cvtColor(small_img, cv2.COLOR_BGR2RGB)
         large_img = cv2.cvtColor(large_img, cv2.COLOR_BGR2RGB)
 
-        # Use resize_cover to ensure the images fill 256x256 without distortion.
-        small_resized = resize_cover(small_img, (256, 256), interpolation=cv2.INTER_NEAREST)
-        large_resized = resize_cover(large_img, (256, 256), interpolation=cv2.INTER_CUBIC)
+        # Resize images to 256x256.
+        small_resized = cv2.resize(small_img, (256, 256), interpolation=cv2.INTER_NEAREST)
+        large_resized = cv2.resize(large_img, (256, 256), interpolation=cv2.INTER_CUBIC)
 
         # Normalize pixel values to [0,1].
         small_norm = small_resized.astype(np.float32) / 255.0
         large_norm = large_resized.astype(np.float32) / 255.0
 
         # Flatten each row (256,3) -> (768,).
-        flat_small = small_norm.reshape(256, -1)  # shape: (256, 768)
-        flat_large = large_norm.reshape(256, -1)    # shape: (256, 768)
+        flat_small = small_norm.reshape(256, -1)
+        flat_large = large_norm.reshape(256, -1)
 
         # Append each row as a separate token.
         for row in flat_small:
