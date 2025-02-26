@@ -267,18 +267,46 @@ class Seq2Seq(nn.Module):
 
 
 
-
-
-
-
 class Loss(nn.Module):
-    def __init__(self, delta=1.0, w1=1.0, w2=1.0, w3=1.0):
-
+    def __init__(self, delta=1.0, w1=1.0, w2=0.8, w3=0.8):  
         super(Loss, self).__init__()
         self.delta = delta
-        self.w1 = w1  # reconstruction loss weight
-        self.w2 = w2  # temporal consistency loss weight
-        self.w3 = w3  # directional consistency loss weight
+        self.w1 = w1  # Reconstruction loss weight
+        self.w2 = w2  # Temporal consistency loss weight
+        self.w3 = w3  # Directional consistency loss weight
+        self.rec_loss_fn = nn.L1Loss()  # L1 loss for sharpness preservation
+
+    def forward(self, predictions, targets, current_step=None, total_steps=None):
+        # Reconstruction loss (L1) - Ensures sharpness
+        rec_loss = self.rec_loss_fn(predictions, targets)
+
+        # Temporal consistency loss - Ensures smooth frame transitions
+        pred_diff = predictions[:, 1:, :] - predictions[:, :-1, :]
+        target_diff = targets[:, 1:, :] - targets[:, :-1, :]
+        temp_loss = F.l1_loss(pred_diff, target_diff)
+
+        # Directional consistency loss - Ensures directional consistency
+        eps = 1e-8  # Avoid division by zero
+        pred_norm = pred_diff / (pred_diff.norm(dim=-1, keepdim=True) + eps)
+        target_norm = target_diff / (target_diff.norm(dim=-1, keepdim=True) + eps)
+        cos_sim = torch.sum(pred_norm * target_norm, dim=-1)
+        dir_loss = 1 - cos_sim.mean()
+
+        # Combine weighted losses
+        total_loss = self.w1 * rec_loss + self.w2 * temp_loss + self.w3 * dir_loss
+        return total_loss
+
+
+
+'''
+
+class Loss(nn.Module):
+    def __init__(self, delta=1.0, w1=1.0, w2=0.8, w3=0.8):  # Slightly reduce w2 and w3
+        super(Loss, self).__init__()
+        self.delta = delta
+        self.w1 = w1  # Reconstruction loss weight
+        self.w2 = w2  # Temporal consistency loss weight (Reduced)
+        self.w3 = w3  # Directional consistency loss weight (Reduced)
         self.rec_loss_fn = nn.SmoothL1Loss(beta=self.delta)
 
     def forward(self, predictions, targets, current_step=None, total_steps=None):
@@ -286,18 +314,19 @@ class Loss(nn.Module):
         pred_diff = predictions[:, 1:, :] - predictions[:, :-1, :]  # (B, T-1, F)
         target_diff = targets[:, 1:, :] - targets[:, :-1, :]          # (B, T-1, F)
         temp_loss = F.l1_loss(pred_diff, target_diff)
-        eps = 1e-8  # small constant to avoid division by zero
+
+        eps = 1e-8  # Small constant to avoid division by zero
         pred_norm = pred_diff / (pred_diff.norm(dim=-1, keepdim=True) + eps)
         target_norm = target_diff / (target_diff.norm(dim=-1, keepdim=True) + eps)
         cos_sim = torch.sum(pred_norm * target_norm, dim=-1)  # (B, T-1)
         dir_loss = 1 - cos_sim.mean()
-    
-        
+
+        # Compute total loss with adjusted weights
         total_loss = self.w1 * rec_loss + self.w2 * temp_loss + self.w3 * dir_loss
         return total_loss
 
 
-'''
+
 
 class Loss(nn.Module):
     def __init__(self, delta=1.0, w1=1.0, w2=0.1, w3=0.5, w4=0.2):
