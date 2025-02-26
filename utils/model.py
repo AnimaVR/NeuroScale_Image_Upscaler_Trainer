@@ -288,8 +288,17 @@ class Loss(nn.Module):
             self.vgg = None  # No VGG if disabled
 
     def laplacian(self, x):
-        kernel = torch.tensor([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=torch.float32, device=x.device).unsqueeze(0).unsqueeze(0)
-        return F.conv2d(x, kernel, padding=1)
+        # Get the number of channels in x (batch, channels, height, width)
+        channels = x.shape[1]  # Typically 64 in your case
+
+        # Define a 3x3 Laplacian kernel
+        kernel = torch.tensor([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=torch.float32, device=x.device)
+
+        # Expand kernel to match input channels (out_channels, in_channels/groups, kernel_h, kernel_w)
+        kernel = kernel.view(1, 1, 3, 3).repeat(channels, 1, 1, 1)  # (64, 1, 3, 3)
+
+        # Apply grouped convolution to process each channel separately
+        return F.conv2d(x, kernel, padding=1, groups=channels)
 
     def high_freq_loss(self, predictions, targets):
         pred_fft = torch.fft.fft2(predictions)
