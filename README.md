@@ -2,4 +2,6 @@
 
 Image upscaler transformer seq2seq research, based on NeuroSync - but for images.
 
-It's rough, you might want to wait until I sort the memory usage out before you try it.
+Can take images or video to create an upscale from 64x64 to 256x256 in colour.
+
+Really good early results, time to scale up.
