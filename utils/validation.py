@@ -65,9 +65,9 @@ def validate_model(model, device):
     Runs inference on the test image (assumed to be at dataset/test_set/test.png) and saves the result.
     """
     test_image_path = "dataset/test_set/test.png"
-    output_dir = "dataset/validation_plots"
+    output_dir = "dataset/validation_plots/output_frames"
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, "test_output.png")
+    output_path = os.path.join(output_dir, f"test_output{int(time.time())}.png")
     image_tensor = preprocess_image(test_image_path)
     decoded_image = decode_image_tensor(image_tensor, model, device)
     save_decoded_image(decoded_image, output_path)
@@ -90,7 +90,7 @@ def validate_model_patches(model, device):
     and the final image is reassembled and saved with a unique filename.
     """
     test_image_path = "dataset/test_set/test.png"
-    output_dir = "dataset/validation_plots"
+    output_dir = "dataset/validation_plots/output_frames"
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"test_output_{int(time.time())}.png")
     
