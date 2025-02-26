@@ -9,7 +9,7 @@ training_config = {
     'micro_batch_size': 256, # Micro batch size, this is the height of the image
     'learning_rate': 5e-5,   # Learning rate
     'weight_decay': 1e-5,    # Weight decay for the optimizer
-    'n_epochs': 50,          # Number of training epochs
+    'n_epochs': 200,          # Number of training epochs
     'output_dim': 768,           # this is width x 3 for RGB  
     'delta': 1,              
     'w1': 1.0,               
