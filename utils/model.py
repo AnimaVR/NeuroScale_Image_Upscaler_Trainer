@@ -298,7 +298,7 @@ class Loss(nn.Module):
 
 
 
-
+'''
 
 class Loss(nn.Module):
     def __init__(self, delta=1.0, w1=1.0, w2=0.8, w3=0.8):  # Slightly reduce w2 and w3
