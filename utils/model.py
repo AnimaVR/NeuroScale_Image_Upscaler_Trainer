@@ -6,7 +6,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from torchvision import models
 # -------------------------------------------------------------------------------------------
 # Global Positional Encoding
 # -------------------------------------------------------------------------------------------
@@ -265,7 +265,86 @@ class Seq2Seq(nn.Module):
         output = self.decoder(encoder_outputs)
         return output
 
+class Loss(nn.Module):
+    def __init__(self, delta=1.0, w1=1.0, w2=0.8, w3=0.8, w_edge=0.5, w_fft=0.5, w_vgg=0.3, use_vgg=False):
+        super(Loss, self).__init__()
+        self.delta = delta
+        self.w1 = w1  # Reconstruction loss weight
+        self.w2 = w2  # Temporal consistency loss weight
+        self.w3 = w3  # Directional consistency loss weight
+        self.w_edge = w_edge  # Edge loss weight
+        self.w_fft = w_fft  # High-frequency loss weight
+        self.w_vgg = w_vgg  # Perceptual loss weight
+        self.use_vgg = use_vgg  # Toggle for external model
 
+        self.rec_loss_fn = nn.L1Loss()
+
+        # Load VGG model only if use_vgg is True
+        if self.use_vgg:
+            self.vgg = models.vgg16(pretrained=True).features[:16].eval()
+            for param in self.vgg.parameters():
+                param.requires_grad = False  # Freeze VGG weights
+        else:
+            self.vgg = None  # No VGG if disabled
+
+    def laplacian(self, x):
+        kernel = torch.tensor([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=torch.float32, device=x.device).unsqueeze(0).unsqueeze(0)
+        return F.conv2d(x, kernel, padding=1)
+
+    def high_freq_loss(self, predictions, targets):
+        pred_fft = torch.fft.fft2(predictions)
+        target_fft = torch.fft.fft2(targets)
+        return F.l1_loss(torch.abs(pred_fft), torch.abs(target_fft))
+
+    def perceptual_loss(self, predictions, targets):
+        if self.use_vgg and self.vgg is not None:
+            pred_features = self.vgg(predictions)
+            target_features = self.vgg(targets)
+            return F.l1_loss(pred_features, target_features)
+        return 0.0  # Return 0 if VGG is disabled
+
+    def forward(self, predictions, targets, current_step=None, total_steps=None):
+        # Reconstruction Loss
+        rec_loss = self.rec_loss_fn(predictions, targets)
+
+        # Edge Loss (Sharpness)
+        edge_loss = F.l1_loss(self.laplacian(predictions), self.laplacian(targets))
+
+        # High-Frequency Loss (Avoid blurring)
+        fft_loss = self.high_freq_loss(predictions, targets)
+
+        # Perceptual Loss (Human-like sharpness) - Only if VGG is enabled
+        vgg_loss = self.perceptual_loss(predictions, targets)
+
+        # Temporal consistency loss (Smooth transitions)
+        pred_diff = predictions[:, 1:, :] - predictions[:, :-1, :]
+        target_diff = targets[:, 1:, :] - targets[:, :-1, :]
+        temp_loss = F.l1_loss(pred_diff, target_diff)
+
+        # Directional consistency loss
+        eps = 1e-8
+        pred_norm = pred_diff / (pred_diff.norm(dim=-1, keepdim=True) + eps)
+        target_norm = target_diff / (target_diff.norm(dim=-1, keepdim=True) + eps)
+        cos_sim = torch.sum(pred_norm * target_norm, dim=-1)
+        dir_loss = 1 - cos_sim.mean()
+
+        # Combine weighted losses
+        total_loss = (
+            self.w1 * rec_loss +
+            self.w_edge * edge_loss +
+            self.w_fft * fft_loss +
+            self.w2 * temp_loss +
+            self.w3 * dir_loss
+        )
+
+        # Add VGG loss only if enabled
+        if self.use_vgg:
+            total_loss += self.w_vgg * vgg_loss
+
+        return total_loss
+    
+
+'''
 
 class Loss(nn.Module):
     def __init__(self, delta=1.0, w1=1.0, w2=0.8, w3=0.8):  
@@ -298,7 +377,7 @@ class Loss(nn.Module):
 
 
 
-'''
+
 
 class Loss(nn.Module):
     def __init__(self, delta=1.0, w1=1.0, w2=0.8, w3=0.8):  # Slightly reduce w2 and w3
