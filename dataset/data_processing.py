@@ -134,7 +134,7 @@ def collect_features(small_frames_dir, large_frames_dir):
         for row in flat_small:
             small_sequences.append(row)
         for row in flat_large:
-            large_sequences.append(row * 20.0)
+            large_sequences.append(row * 10.0)
 
     # Convert lists to tensors of shape (TotalScanlines, 768).
     small_sequences_tensor = torch.tensor(np.vstack(small_sequences), dtype=torch.float32)
